@@ -1,0 +1,54 @@
+Ichapod by Patrick Simonds (divinitycycle@gmail.com)
+---------------------------------------------------------------------
+What is it?
+-----------
+This is a BASH shell script intended to be run as a Cron job, or by hand as needed.
+Quite simply, Ichapod downloads files from podcast feeds and formats them nicely.
+By "nicely", I mean it outputs files with all the ID3 tags filled in, including
+cover art (if supplied). The filenames are also very human readable, making it easier
+to archive & organize podcasts.
+
+Setup & Use
+-----------
+Pre-requisites for this script are eyeD3, xsltproc, wget, and mp3gain.
+If you're running Ubuntu, you should be able to just apt-get all of those.
+Like any other script, just chmod a+x to give it executable rights.
+The script has a few settings in it, plus you need to give it a text file
+containing the podcasts you want to download. The example (podcasts.txt) is included.
+
+Settings
+--------
+destinationfolder: This is the root folder Ichapod will move all the downloaded files to.
+Sub-directories are created for each feed.
+
+podcastlist: The address in the filesystem where your podcasts.txt is located.
+(enclose in double-quotes if the path contains spaces)
+
+downloadlog: The address in the filesystem where you want Ichapod to keep an ongoing
+record of what files have been downloaded. This is checked against to prevent duplicates.
+(enclose in double-quotes if the path contains spaces)
+
+podcasts.txt: This file should contain a list of the feeds you want Ichapod to download from.
+The format is very simple, with one line per feed. You can use none, one, or two labels.
+With no labels specified, Ichapod will attempt to parse the feed name out of the RSS.
+With one label specified, Ichapod will ignore the feed's Channel Name and instead use what you
+specify for the Artist, Album Artist, and Album tags. Depending on the feed, this may work fine.
+With two labels specified, the first label is used for the Artist and AlbumArtist tags, and the 
+second is used as the Album tag. This is my preferred method of use.
+Note: DO NOT delete the last line, for some reason it gets ignored.
+
+History
+-------
+The inspiration was simple: I wanted to listen to podcasts, but wanted to use my 
+existing nice media player solutions to do it. I use things like XBMC and SongBird
+on the computer, and UberMusic & PlayerPro on Android. All of them are really nice, 
+but look and act kinda lame if you try to listen to the files from most podcasts.
+The information about each episode is there, in the feed, but not in the file.
+
+I was initially going to just use G-Podder, but that requires a full desktop be
+running. My headless server doesn't have any of that stuff installed, and really
+you shouldn't NEED that stuff just to do something as basic as get podcasts. This
+lead to a bunch of Googling and Bashpodder, which I quickly found insufficient.
+Thus, I began chugging away on my own solution. 
+This script was written almost entirely within Notepad++ and tested on a headless
+machine running Ubuntu Server 11.10. 
