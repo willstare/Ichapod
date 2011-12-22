@@ -68,8 +68,11 @@ then
 	# Now we read through the podcast list and handle each one
 	while read podcast
 		do
+			# Avoiding some logic issues by freshly instantiated variables at the start of each podcast
 			label="";
 			label2="";
+			ageskip="";
+			ageseconds="";
 			# check to see if a custom label has been entered for this feed
 			if [[ "$podcast" = *---* ]]; 
 			then
@@ -134,12 +137,10 @@ then
 				# on the right we simply multiply the age limit by 86,400 (the number of seconds in a day) so that its the same format.
 				if [ $(($( date +%s)-$ageseconds)) -gt $(($agelimit*86400)) ]
 				then
-					ageskip="true";
-					# echo "$(date +\%m-\%d-\%H\%M): Skipping $label-$date-$episodetitle.mp3, too old.";
-				else
-					ageskip="false";
+					ageskip=true;
+					#echo "$(date +\%m-\%d-\%H\%M): Skipping $label-$date-$episodetitle.mp3, too old.";
 				fi
-				if ! grep "$downloadurl" "$downloadlog">/dev/null && "$ageskip" != "true";
+				if ! grep "$downloadurl" "$downloadlog">/dev/null && ! $ageskip
 				then
 					if [ "$label2" == "" ];
 					then  # This is the branch for having no special album label
@@ -147,11 +148,11 @@ then
 						# only download if file doesn't already exist
 						if [ -e "$destinationfolder"/"$label"/"$label"-"$date"-"$episodetitle".mp3 ]
 						then
-							echo "$(date +\%m-\%d-\%H\%M):URL not found in log: $downloadurl."
+							echo "$(date +\%m-\%d-\%H\%M):URL not found in log: $downloadurl but file exists anyway."
 						fi
 						if [ ! -e "$destinationfolder"/"$label"/"$label"-"$date"-"$episodetitle".mp3 ]
 						then
-							echo "$(date +\%m-\%d-\%H\%M): Now downloading $label-$date-$episodetitle.mp3."
+							echo "$(date +\%m-\%d-\%H\%M): Downloading $label-$date-$episodetitle.mp3."
 							wget -q -x -t 10 -O "$destinationfolder"/"$label"/"$label"-"$date"-"$episodetitle".mp3 "$downloadurl"; # Download the file.
 						fi
 						if [ -e "$destinationfolder"/"$label"/"$label"-"$date"-"$episodetitle".mp3 ] # If the downloaded file exists, then we can proceed to deal with it.
