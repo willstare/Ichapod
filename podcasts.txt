@@ -3,6 +3,6 @@ Spill.com---A Couple Of Cold Ones---http://feeds.spill.com/spill/acoco
 Spill.com---Let's Do This---http://feeds.spill.com/spill/letsdothis
 Spill.com---Movie Reviews---http://feeds.spill.com/spill/movie-review
 BBC---Global News---http://downloads.bbc.co.uk/podcasts/worldservice/globalnews/rss.xml
-This American Life---http://feeds.feedburner.com/talpodcast
+This American Life---This American Life---http://feeds.feedburner.com/talpodcast
 NPR---Fresh Air---http://www.npr.org/rss/podcast.php?id=13
 NPR---Culturetopia---http://www.npr.org/rss/podcast.php?id=510282

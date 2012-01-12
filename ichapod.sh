@@ -5,28 +5,27 @@
 ##############
 ## SETTINGS ##
 ##############
-
 # In the default setup, Ichapod is installed to /usr/share/ichapod
 # It should be possible to put any of the files associated with it pretty much anywhere.
 # This is where you want to finished podcast files to go
-destinationfolder="/usr/share/ichapod/downloads"
+destinationfolder="/mnt/disk3/Music/Incoming/Podcasts"
 
 # This is the file containing your podcasts to be downloaded
 podcastlist="/usr/share/ichapod/podcasts.txt"
 
 # This is the number of days old an item can be and still be downloaded.
 # If you set the agelimit to 12 and Ichapod gets a story that's 2 weeks old, it will skip it.
-agelimit="3";
+agelimit="5";
 
 # Download Log
 # This file is maintained & used by Ichapod and isn't intended to be human readable.
 # It prevents Ichapod from trying to download a file it has already downloaded.
-downloadlog="/usr/share/ichapod/downloadedpodcasts.log"
+downloadlog="/var/www/logs/downloadedpodcasts.log"
 
 # Daily Log File
 # If you are running Ichapod via cron and logging the output to a file, you can tell Ichapod where the file is
 # to allow it to insert a custom log header into it.
-dailylog="/usr/share/ichapod/ichapod-runlog-`date +\%Y-\%m-\%d`.log";
+dailylog="/var/www/logs/ichapod-runlog-`date +\%Y-\%m-\%d`.log";
 
 # Daily Log Header
 # this is the text you want inserted at the top of your daily log file.
@@ -39,7 +38,7 @@ processorfile="/usr/share/ichapod/readpodcast.xsl"
 # This is a temporary log, used to collect output for debugging purposes.
 # Its rebuilt every time Ichapod is run, useful if you're trying to see what happened during the last run.
 # You can usually just leave the default.
-debuglog="/tmp/ichapod-lastrun.log";
+debuglog="/var/www/logs/ichapod-lastrun.log";
 
 # END SETTINGS ###################################
 
@@ -48,18 +47,14 @@ debuglog="/tmp/ichapod-lastrun.log";
 # If so, its the first run of the day, and we should output the header.
 if [ ! -s "$dailylog" ] && [ "$dailylogheader" != "" ] && [ "$dailylog" != "" ]
 then
-	echo "$dailylogheader";
+	echo "$dailylogheader">>"$dailylog";
 fi
 echo "$(date +\%m-\%d-\%H:\%M): Ichapod started.">"$debuglog";
-# Wrap the entire script in an If fork so that we allow only one instance of the script to run
-if [ -e "/var/run/ichapod" ];
-then
-	echo "$(date +\%m-\%d-\%H\%M): Runfile already exists, a previous instance of Ichapod is already running.";
-fi
-if [ ! -e "/var/run/ichapod" ];
-then
-	#since Ichapod is now "running", make the Runfile
-	touch "/var/run/ichapod";
+# Wrap up the functional stuff using flock to prevent concurrent runs.
+set -e
+
+(
+	flock -x -w 10 200
 	# Next we make sure our destination actually exists
 	mkdir -p $destinationfolder;
 	# if download log doesn't exist, make one.
@@ -70,8 +65,7 @@ then
 	fi
 	if [ -e "$downloadlog" ];
 	then
-		# this line is useful for troubleshooting, but is also "good" at filling your logs with extra garbage.
-		echo "$(date +\%m-\%d-\%H:\%M): Download Log found at $downloadlog.">>"$debuglog";
+		echo "$(date +\%m-\%d-\%I:\%M\%p): Download Log found at $downloadlog.">>"$debuglog";
 	fi
 	# Ensure no previous temp log file exists
 	rm -f /tmp/ichapodtmp.log;
@@ -103,7 +97,7 @@ then
 			else
 				feedurl=$podcast;
 			fi #now we pull & process the feed items from the current podcast feed we are processing.
-			echo "$(date +\%m-\%d-\%H:\%M): Now working on $label-$label2-$feedurl.">>"$debuglog";
+			echo "$(date +\%m-\%d-\%I:\%M\%p): Now working on $label-$label2-$feedurl.">>"$debuglog";
 			xsltproc $processorfile $feedurl>/tmp/ichapodtmp.log;
 			while read episode
 			do
@@ -129,13 +123,15 @@ then
 				episodetitle=$(echo ${episodetitle//: /-}); # Replace ": " with "-" in the title.
 				episodetitle=$(echo ${episodetitle//\?/}); # Remove question marks.
 				episodetitle=$(echo ${episodetitle// \/ /, }); # Replace " / " with ", ".
+				episodetitle=$(echo ${episodetitle//\//,}); # Replace "/" with ",".
+				episodetitle=$(echo ${episodetitle//\//}); # Remove any remaining "/"s.
 				episode=${episode#*---};
 				# the actual wget target
 				downloadurl=${episode%---*};
 				# Now that all the episode-specific variables SHOULD be filled, we can read them out to the debug log.
-				echo "$(date +\%m-\%d-\%H:\%M): Now working on $downloadurl.">>"$debuglog";
-				echo "$(date +\%m-\%d-\%H:\%M): Episode Title is $episodetitle.">>"$debuglog";
-				echo "$(date +\%m-\%d-\%H:\%M): Date is $date, Year is $year.">>"$debuglog";
+				echo "$(date +\%m-\%d-\%I:\%M\%p): Now working on $downloadurl.">>"$debuglog";
+				echo "$(date +\%m-\%d-\%I:\%M\%p): Episode Title is $episodetitle.">>"$debuglog";
+				echo "$(date +\%m-\%d-\%I:\%M\%p): Date is $date, Year is $year.">>"$debuglog";
 				# Here's the date processing section. I decided that rather than wrap everything inside another logic fork, I'd just do the date comparison
 				# and then fill a Boolean variable with the result. Instantiate that with "false" to avoid any logic problems.
 				ageskip=false;
@@ -145,7 +141,7 @@ then
 				if [ $(($( date +%s)-$ageseconds)) -gt $(($agelimit*86400)) ]
 				then
 					ageskip=true;
-					echo "$(date +\%m-\%d-\%H:\%M): Skipping $label-$date-$episodetitle.mp3, too old.">>"$debuglog";
+					echo "$(date +\%m-\%d-\%I:\%M\%p): Skipping $label-$date-$episodetitle.mp3, too old.">>"$debuglog";
 				fi
 				# If the file isn't already in the log and isn't too old, then lets go!
 				if ! grep "$downloadurl" "$downloadlog">/dev/null && ! $ageskip
@@ -168,23 +164,23 @@ then
 					# If file DOES exist already, that seems weird.
 					if [ -e "$finishedfilename" ]
 					then
-						echo "$(date +\%m-\%d-\%H:\%M): URL not found in log, but $finishedfilename but file exists anyway.">>"$debuglog";
+						echo "$(date +\%m-\%d-\%I:\%M\%p): URL not found in log, but $finishedfilename but file exists anyway.">>"$debuglog";
 					fi
 					# only download if file doesn't already exist
 					if [ ! -e "$finishedfilename" ]
 					then
-						echo "$(date +\%m-\%d-\%H\%M): Downloading $label-$date-$episodetitle.mp3."
+						echo "$(date +\%m-\%d-\%H\%M): Downloading $label-$date-$episodetitle.mp3.">>"$dailylog";
 						wget -q -x -t 10 -O "$finishedfilename" "$downloadurl"; # Download the file.
 					fi
 					if [ -e "$finishedfilename" ] # If the downloaded file exists, then we can proceed to deal with it.
 					then
 						echo "$downloadurl" >> "$downloadlog"; # Log it, and tag it.
-						echo "$(date +\%m-\%d-\%H:\%M): Now running eyeD3.">>"$debuglog";
+						echo "$(date +\%m-\%d-\%I:\%M\%p): Now running eyeD3.">>"$debuglog";
 						eyeD3 --to-v2.3 --set-text-frame=TPE2:"$label" --genre=Podcast --year=$year --title="$episodetitle" --album="$album" --artist="$label" "$finishedfilename">>"$debuglog" 2>&1;
-						echo " ">>"$debuglog";
+						echo " ">>"$debuglog"; # For readability
 						if [ -e "$coverartlocation" ] # Check for cover art file, and if it exists, tag it into the file.
 						then
-							echo "$(date +\%m-\%d-\%H:\%M): Now tagging the artwork in.">>"$debuglog";
+							echo "$(date +\%m-\%d-\%I:\%M\%p): Now tagging the artwork in.">>"$debuglog";
 							eyeD3 --remove-images "$finishedfilename">>"$debuglog";
 							eyeD3 --to-v2.3 --add-image="$coverartlocation":FRONT_COVER "$finishedfilename">>"$debuglog";
 							echo " ">>"$debuglog";
@@ -192,23 +188,17 @@ then
 						# Check the mp3 to see if it has already been run through MP3gain and skip it if it has.
 						if ! eyeD3 "$finishedfilename" | grep replaygain_reference_loudness>/dev/null;
 						then
-							echo "$(date +\%m-\%d-\%H:\%M): Applying MP3gain to file.">>"$debuglog";
+							echo "$(date +\%m-\%d-\%I:\%M\%p): Applying MP3gain to file.">>"$debuglog";
 							mp3gain -T -e -r -s i -c -q "$finishedfilename">>"$debuglog" 2>&1; # Normalize the file
 							echo " ">>"$debuglog";
 						fi
-						echo "$(date +\%m-\%d-\%H:\%M): End post-processing.">>"$debuglog";
+						echo "$(date +\%m-\%d-\%I:\%M\%p): End post-processing.">>"$debuglog";
 					fi # END Post-Processing Branch.
 				fi # END Downloader Branch.
 			done < "/tmp/ichapodtmp.log"
-			echo "$(date +\%m-\%d-\%H:\%M): Finished with this feed.">>"$debuglog";
+			echo "$(date +\%m-\%d-\%I:\%M\%p): Finished with this feed.">>"$debuglog";
 			echo " ">>"$debuglog";
 		done < "$podcastlist"
-	echo "$(date +\%m-\%d-\%H:\%M): Removing temporary log, processing complete.">>"$debuglog";
+	echo "$(date +\%m-\%d-\%I:\%M\%p): Removing temporary log, processing complete.">>"$debuglog";
 	rm -f /tmp/ichapodtmp.log;
-	# Since we are done, take down the Runfile
-	rm -f "/var/run/ichapod";
-	if [ ! -e "/var/run/ichapod" ];
-	then
-		echo "$(date +\%m-\%d-\%H:\%M): Runfile removed successfully.">>"$debuglog";
-	fi
-fi
+) 200>/var/lock/.inchapod.exclusivelock
