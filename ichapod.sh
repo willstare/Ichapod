@@ -8,24 +8,24 @@
 # In the default setup, Ichapod is installed to /usr/share/ichapod
 # It should be possible to put any of the files associated with it pretty much anywhere.
 # This is where you want to finished podcast files to go
-destinationfolder="/mnt/disk3/Music/Incoming/Podcasts"
+destinationfolder="/usr/share/ichapod/downloads"
 
 # This is the file containing your podcasts to be downloaded
 podcastlist="/usr/share/ichapod/podcasts.txt"
 
 # This is the number of days old an item can be and still be downloaded.
 # If you set the agelimit to 12 and Ichapod gets a story that's 2 weeks old, it will skip it.
-agelimit="5";
+agelimit="3";
 
 # Download Log
 # This file is maintained & used by Ichapod and isn't intended to be human readable.
 # It prevents Ichapod from trying to download a file it has already downloaded.
-downloadlog="/var/www/logs/downloadedpodcasts.log"
+downloadlog="/usr/share/ichapod/downloadedpodcasts.log"
 
 # Daily Log File
 # If you are running Ichapod via cron and logging the output to a file, you can tell Ichapod where the file is
 # to allow it to insert a custom log header into it.
-dailylog="/var/www/logs/ichapod-runlog-`date +\%Y-\%m-\%d`.log";
+dailylog="/usr/share/ichapod/ichapod-`date +\%Y-\%m-\%d`.log";
 
 # Daily Log Header
 # this is the text you want inserted at the top of your daily log file.
@@ -38,7 +38,7 @@ processorfile="/usr/share/ichapod/readpodcast.xsl"
 # This is a temporary log, used to collect output for debugging purposes.
 # Its rebuilt every time Ichapod is run, useful if you're trying to see what happened during the last run.
 # You can usually just leave the default.
-debuglog="/var/www/logs/ichapod-lastrun.log";
+debuglog="/usr/share/ichapod/ichapod-lastrun.log";
 
 # END SETTINGS ###################################
 
@@ -49,7 +49,7 @@ if [ ! -s "$dailylog" ] && [ "$dailylogheader" != "" ] && [ "$dailylog" != "" ]
 then
 	echo "$dailylogheader">>"$dailylog";
 fi
-echo "$(date +\%m-\%d-\%H:\%M): Ichapod started.">"$debuglog";
+echo "$(date +\%m-\%d-\%I:\%M\%p): Ichapod started.">"$debuglog";
 # Wrap up the functional stuff using flock to prevent concurrent runs.
 set -e
 
@@ -60,7 +60,7 @@ set -e
 	# if download log doesn't exist, make one.
 	if [ ! -e "$downloadlog" ];
 	then
-		echo "$(date +\%m-\%d-\%H:\%M): Download Log missing, should be $downloadlog.">>"$debuglog";
+		echo "$(date +\%m-\%d-\%I:\%M\%p): Download Log missing, should be $downloadlog.">>"$debuglog";
 		touch "$downloadlog";
 	fi
 	if [ -e "$downloadlog" ];
@@ -169,7 +169,7 @@ set -e
 					# only download if file doesn't already exist
 					if [ ! -e "$finishedfilename" ]
 					then
-						echo "$(date +\%m-\%d-\%H\%M): Downloading $label-$date-$episodetitle.mp3.">>"$dailylog";
+						echo "$(date +\%m-\%d-\%I:\%M\%p): Downloading $label-$date-$episodetitle.mp3.">>"$dailylog";
 						wget -q -x -t 10 -O "$finishedfilename" "$downloadurl"; # Download the file.
 					fi
 					if [ -e "$finishedfilename" ] # If the downloaded file exists, then we can proceed to deal with it.
