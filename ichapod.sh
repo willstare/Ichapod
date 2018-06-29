@@ -1,31 +1,37 @@
 #!/bin/bash
 # Ichapod by Patrick Simonds (divinitycycle@gmail.com)
 # This script is inspired by BashPodder, but I wanted much fancier output options
-
+# 
+#
+#This script has been updated in 2018. Notible changes include using wget to download the RSS to a 'current.rss' file before xsltproc processes the RSS. There seemed to be an issue with using xsltproc to grab the file.
+#
+#
 ##############
 ## SETTINGS ##
 ##############
 # In the default setup, Ichapod is installed to /usr/share/ichapod
 # It should be possible to put any of the files associated with it pretty much anywhere.
 # This is where you want to finished podcast files to go
-destinationfolder="/usr/share/ichapod/downloads"
+destinationfolder="" #Example destinationfolder="/mnt/plex/Podcasts"
 
+# This is where you are storing the ichapod.sh script.
+scriptfolder="" # Example scriptfolder="/home/plex/scripts/ichapod"
 # This is the file containing your podcasts to be downloaded
-podcastlist="/usr/share/ichapod/podcasts.txt"
+podcastlist="" # Example podcastlist="/home/plexadmin/scripts/ichapod/podcasts.txt"
 
 # This is the number of days old an item can be and still be downloaded.
 # If you set the agelimit to 12 and Ichapod gets a story that's 2 weeks old, it will skip it.
-agelimit="3";
+agelimit="5";
 
 # Download Log
 # This file is maintained & used by Ichapod and isn't intended to be human readable.
 # It prevents Ichapod from trying to download a file it has already downloaded.
-downloadlog="/usr/share/ichapod/downloadedpodcasts.log"
+downloadlog="" # Example downloadlog="/home/plexadmin/scripts/ichapod/downloadedpodcasts.log"
 
 # Daily Log File
 # If you are running Ichapod via cron and logging the output to a file, you can tell Ichapod where the file is
 # to allow it to insert a custom log header into it.
-dailylog="/usr/share/ichapod/ichapod-`date +\%Y-\%m-\%d`.log";
+dailylog="-`date +\%Y-\%m-\%d`.log"; # Example dailylog="/home/plexadmin/scripts/ichapod/ichapod-`date +\%Y-\%m-\%d`.log";
 
 # Daily Log Header
 # this is the text you want inserted at the top of your daily log file.
@@ -33,18 +39,21 @@ dailylogheader=$( echo -e "#################################################\n##
 
 # This should be pointed at the xsl file in your Ichapod location.
 # You usually do not need to mess with this, just give the location of the included file
-processorfile="/usr/share/ichapod/readpodcast.xsl"
+processorfile="" # Example processorfile="/home/plexadmin/scripts/ichapod/readpodcast.xsl"
 
 # This is a temporary log, used to collect output for debugging purposes.
 # Its rebuilt every time Ichapod is run, useful if you're trying to see what happened during the last run.
 # You can usually just leave the default.
-debuglog="/usr/share/ichapod/ichapod-lastrun.log";
+debuglog=""; # Example debuglog="/home/plexadmin/scripts/ichapod/ichapod-lastrun.log";
 
 # END SETTINGS ###################################
 
 # Begin actual script #############################
-# First we check that the daily log variables havbe been set, but the current log file is empty.
+# First we check that the daily log variables have been set, but the current log file is empty.
 # If so, its the first run of the day, and we should output the header.
+downloadDate=`date +\%Y-\%m-\%d`
+echo "$downloadDate"
+
 if [ ! -s "$dailylog" ] && [ "$dailylogheader" != "" ] && [ "$dailylog" != "" ]
 then
 	echo "$dailylogheader">>"$dailylog";
@@ -98,7 +107,8 @@ set -e
 				feedurl=$podcast;
 			fi #now we pull & process the feed items from the current podcast feed we are processing.
 			echo "$(date +\%m-\%d-\%I:\%M\%p): Now working on $label-$label2-$feedurl.">>"$debuglog";
-			xsltproc $processorfile $feedurl>/tmp/ichapodtmp.log;
+			wget $feedurl -O $scriptfolder/current.rss			
+			xsltproc $processorfile $scriptfolder/current.rss>/tmp/ichapodtmp.log;
 			while read episode
 			do
 				# This is the loop that processes each episode within a podcast.
@@ -118,10 +128,12 @@ set -e
 				episode=${episode#*---};
 				ageseconds=$(date -d "$date" +%s);
 				year=$(date -d "$date" +%Y);
-				date=$(date -d "$date" +%Y-%m-%d-%H%M); # put the date into the nice 2011-12-03 format
+				date=$(date -d "$date" +%Y-%m-%d); # put the date into the nice 2011-12-03 format
+								
 				episodetitle=${episode%---*}; # Next the title
 				episodetitle=$(echo ${episodetitle//: /-}); # Replace ": " with "-" in the title.
 				episodetitle=$(echo ${episodetitle//\?/}); # Remove question marks.
+				episodetitle=$(echo ${episodetitle//\’/}); # Remove single quote marks.
 				episodetitle=$(echo ${episodetitle// \/ /, }); # Replace " / " with ", ".
 				episodetitle=$(echo ${episodetitle//\//,}); # Replace "/" with ",".
 				episodetitle=$(echo ${episodetitle//\//}); # Remove any remaining "/"s.
@@ -176,7 +188,8 @@ set -e
 					then
 						echo "$downloadurl" >> "$downloadlog"; # Log it, and tag it.
 						echo "$(date +\%m-\%d-\%I:\%M\%p): Now running eyeD3.">>"$debuglog";
-						eyeD3 --to-v2.3 --set-text-frame=TPE2:"$label" --genre=Podcast --year=$year --title="$episodetitle" --album="$album" --artist="$label" "$finishedfilename">>"$debuglog" 2>&1;
+						label=$(echo ${label//\'/}); #remove single quote from label
+						eyeD3 --to-v2.3 --set-text-frame=TPE2:"$label" --genre=Podcast --year=$year --title="$date-$episodetitle" --album="$album" --artist="$label" "$finishedfilename">>"$debuglog"  2>&1;
 						echo " ">>"$debuglog"; # For readability
 						if [ -e "$coverartlocation" ] # Check for cover art file, and if it exists, tag it into the file.
 						then
