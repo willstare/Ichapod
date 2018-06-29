@@ -3,7 +3,7 @@
 # This script is inspired by BashPodder, but I wanted much fancier output options
 # 
 #
-#This script has been updated in 2018. Notible changes include using wget to download the RSS to a 'current.rss' file before xsltproc processes the RSS. There seemed to be an issue with using xsltproc to grab the file.
+#This script has been updated in 2018 by github user willstare. Notible changes include using wget to download the RSS to a 'current.rss' file before xsltproc processes the RSS. There seemed to be an issue with using xsltproc to grab the file.
 #
 #
 ##############
